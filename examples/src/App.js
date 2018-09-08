@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import logo from './logo.svg';
 import ScrollMenu from 'react-horizontal-scrolling-menu';
 import './App.css';
@@ -40,17 +41,32 @@ const MenuItem = ({ text, selected }) => {
     </div>
   );
 };
+MenuItem.propTypes = {
+  text: PropTypes.string.isRequired,
+  selected: PropTypes.bool
+};
+MenuItem.defaultProps = {
+  selected: false
+};
 
-export const Menu = (list) => list.map(el => {
-  const { name } = el;
+export const Menu = (list, count) => list
+  .slice(0, count)
+  .map(el => {
+    const { name } = el;
 
-  return (
-    <MenuItem
-      text={name}
-      key={name}
-    />
-  );
-});
+    return (
+      <MenuItem
+        text={name}
+        key={name}
+      />
+    );
+  });
+Menu.propTypes = {
+  list: PropTypes.arrayOf(
+    PropTypes.func
+  ).isRequired,
+  count: PropTypes.number.isRequired
+};
 
 const Arrow = ({ text, className }) => {
   return (
@@ -58,6 +74,10 @@ const Arrow = ({ text, className }) => {
       className={className}
     >{text}</div>
   );
+};
+Arrow.propTypes = {
+  text: PropTypes.string,
+  className: PropTypes.string
 };
 
 export const ArrowLeft = Arrow({ text: '<', className: 'arrow-prev' });
@@ -72,22 +92,15 @@ class App extends Component {
     dragging: true,
     clickWhenDrag: false,
     transition: 0.4,
-    wheel: true
+    wheel: true,
+    itemsCount: 25
   };
 
   constructor(props) {
     super(props);
     this.menu = null;
-  }
-
-  onUpdate = ({ translate }) => {
-    console.log(`onUpdate: translate: ${translate}`);
-    this.setState({ translate });
-  }
-
-  onSelect = key => {
-    console.log(`onSelect: ${key}`);
-    this.setState({ selected: key });
+    this.menuItems = null;
+    this.itemsCount = null;
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -102,6 +115,67 @@ class App extends Component {
     }
   }
 
+  onUpdate = ({ translate }) => {
+    console.log(`onUpdate: translate: ${translate}`);
+    this.setState({ translate });
+  }
+
+  onSelect = key => {
+    console.log(`onSelect: ${key}`);
+    this.setState({ selected: key });
+  }
+
+  setAlign = () => {
+    this.setState(prevState => {
+      return { alignCenter: !prevState.alignCenter };
+    });
+  }
+
+  setDragging = () => {
+    this.setState(prevState => {
+      return { dragging: !prevState.dragging };
+    });
+  }
+
+  setClick = () => {
+    this.setState(prevState => {
+      return { clickWhenDrag: !prevState.clickWhenDrag };
+    });
+  }
+
+  setWheel = () => {
+    this.setState(prevState => {
+      return { wheel: !prevState.wheel };
+    });
+  }
+
+  setTranslate = ev => {
+    const { translate: translateOld } = this.state;
+    const val = parseFloat(ev.target.value);
+    const value = !isNaN(val)
+      ? val
+      : translateOld;
+    this.setState({ translate: value });
+  }
+
+  setDuration = ev => {
+    const { transition: transitionOld } = this.state;
+    const val = parseFloat(ev.target.value);
+    const value = !isNaN(val)
+      ? val
+      : transitionOld;
+    this.setState({ transition: value });
+  }
+
+  setItems = ev => {
+    const { items: itemsOld } = this.state;
+    const val = +ev.target.value;
+    const value = !isNaN(val)
+      ? val
+      : itemsOld;
+    this.setState({ itemsCount: value });
+  }
+
   render() {
     const {
       selected,
@@ -110,9 +184,20 @@ class App extends Component {
       dragging,
       clickWhenDrag,
       transition,
-      wheel
+      wheel,
+      itemsCount
     } = this.state;
-    const menu = Menu(list, selected);
+
+    // For don't return new object instance with every render
+    // If change items after component mounted
+    //
+    // If you don't change menu items count or property can map it one time,
+    // better not in render method
+    const { itemsCount: itemsCountOld } = this;
+    if (itemsCountOld !== itemsCount) {
+      this.itemsCount = itemsCount;
+      this.menuItems = Menu(list, itemsCount);
+    }
 
     const checkboxStyle = {
       margin: '5px 10px'
@@ -135,7 +220,7 @@ class App extends Component {
 
         <ScrollMenu
           ref={el => this.menu = el}
-          data={menu}
+          data={this.menuItems}
           arrowLeft={ArrowLeft}
           arrowRight={ArrowRight}
           transition={+transition}
@@ -156,7 +241,7 @@ class App extends Component {
               name="alignCenter"
               type="checkbox"
               checked={alignCenter}
-              onChange={() => this.setState({ alignCenter: !alignCenter })}
+              onChange={this.setAlign}
             /> 
           </label>
           <label style={ checkboxStyle }>
@@ -165,7 +250,7 @@ class App extends Component {
               name="dragging"
               type="checkbox"
               checked={dragging}
-              onChange={() => this.setState({ dragging: !dragging })}
+              onChange={this.setDragging}
             /> 
           </label>
           <label style={ checkboxStyle }>
@@ -174,7 +259,7 @@ class App extends Component {
               name="clickWhenDrag"
               type="checkbox"
               checked={clickWhenDrag}
-              onChange={() => this.setState({ clickWhenDrag: !clickWhenDrag })}
+              onChange={this.setClick}
             /> 
           </label>
           <label style={ checkboxStyle }>
@@ -183,12 +268,31 @@ class App extends Component {
               name="wheel"
               type="checkbox"
               checked={wheel}
-              onChange={() => this.setState({ wheel: !wheel })}
+              onChange={this.setWheel}
             /> 
           </label>
           <br />
-          <div style={ valueStyle }>Translate: {(translate).toFixed(2)}</div>
+          <label style={ valueStyle }>
+            Translate:
+            <input
+              name="translate"
+              type="number"
+              value={translate}
+              onChange={this.setTranslate}
+            /> 
+          </label>
           <div style={ valueStyle }>Selected: {selected}</div>
+          <label style={ valueStyle }>
+            Items count
+            <input
+              style={{ margin: '0 5px' }}
+              name="itemsCount"
+              type="number"
+              value={itemsCount}
+              min={0}
+              max={list.length}
+              onChange={this.setItems} />
+          </label>
           <label style={ valueStyle }>
             Transition duration:
             <input
@@ -198,7 +302,7 @@ class App extends Component {
               value={transition || 0}
               min={0}
               max={10}
-              onChange={ev => this.setState({ transition: !isNaN(ev.target.value) ? +ev.target.value : 0})} />
+              onChange={this.setDuration} />
           </label>
         </form>
         <hr />

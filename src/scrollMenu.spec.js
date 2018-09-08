@@ -308,22 +308,22 @@ describe('functions', () => {
       wrapper.setProps({ alignCenter: false });
       wrapper.setState({ menuWidth: 30, allItemsWidth: 150, lastPageOffset: 20 });
 
-      expect(wrapper.instance().itAfterEnd(0)).toEqual(false);
-      expect(wrapper.instance().itAfterEnd(50)).toEqual(false);
-      expect(wrapper.instance().itAfterEnd(100)).toEqual(false);
-      expect(wrapper.instance().itAfterEnd(-118)).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: 0 })).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: 50 })).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: 100 })).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: -118 })).toEqual(false);
 
-      expect(wrapper.instance().itAfterEnd(-121)).toEqual(true);
-      expect(wrapper.instance().itAfterEnd(-200)).toEqual(true);
+      expect(wrapper.instance().itAfterEnd({ translate: -121 })).toEqual(true);
+      expect(wrapper.instance().itAfterEnd({ translate: -200 })).toEqual(true);
     
       wrapper.setProps({ alignCenter: true });
-      expect(wrapper.instance().itAfterEnd(0)).toEqual(false);
-      expect(wrapper.instance().itAfterEnd(50)).toEqual(false);
-      expect(wrapper.instance().itAfterEnd(100)).toEqual(false);
-      expect(wrapper.instance().itAfterEnd(-140)).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: 0 })).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: 50 })).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: 100 })).toEqual(false);
+      expect(wrapper.instance().itAfterEnd({ translate: -140 })).toEqual(false);
 
-      expect(wrapper.instance().itAfterEnd(-141)).toEqual(true);
-      expect(wrapper.instance().itAfterEnd(-200)).toEqual(true);
+      expect(wrapper.instance().itAfterEnd({ translate: -141 })).toEqual(true);
+      expect(wrapper.instance().itAfterEnd({ translate: -200 })).toEqual(true);
     });
 
   });
@@ -580,7 +580,7 @@ describe('functions', () => {
         wrapper.instance().handleWheel(ev);
 
         expect(arrowClick.mock.calls.length).toEqual(1);
-        expect(arrowClick.mock.calls[0]).toEqual([]);
+        expect(arrowClick.mock.calls[0]).toEqual([{ left: true }]);
         arrowClick.mockClear();
       });
       it('scroll right', () => {
@@ -588,7 +588,7 @@ describe('functions', () => {
         wrapper.instance().handleWheel(ev);
 
         expect(arrowClick.mock.calls.length).toEqual(1);
-        expect(arrowClick.mock.calls[0]).toEqual([false]);
+        expect(arrowClick.mock.calls[0]).toEqual([{ left: false }]);
         arrowClick.mockClear();
       });
       it('wheel disabled', () => {
@@ -605,8 +605,6 @@ describe('functions', () => {
       const wrapper = mount(<ScrollMenu {...props} />);
       wrapper.setProps({ alignCenter: false });
       wrapper.setState({ allItemsWidth: 200, menuWidth: 50, firstPageOffset: 5, lastPageOffset: 6 });
-      const onUpdate = jest.fn();
-      wrapper.instance().onUpdate = onUpdate;
 
       const checkClick = (left = false, align = false, before = false, after = false) => {
         const itBeforeStart = jest.fn().mockReturnValue(before);
@@ -616,7 +614,7 @@ describe('functions', () => {
         const getOffset = jest.fn().mockReturnValue(20);
         wrapper.instance().getOffset = getOffset;
 
-        wrapper.instance().handleArrowClick(left);
+        wrapper.instance().handleArrowClick({ left });
         const { translate, xPoint } = wrapper.state();
         expect(xPoint).toEqual(0);
         return translate;
@@ -651,23 +649,6 @@ describe('functions', () => {
         wrapper.setProps({ alignCenter: true });
         expect(checkClick(false, true, false, true)).toEqual(-156);
       });
-      it('call onUpdate if translate changed', () => {
-        const wrapper = mount(
-          <ScrollMenu
-            {...props}
-          />
-        );
-        const onUpdate = jest.fn();
-        wrapper.instance().onUpdate = onUpdate;
-        const getOffset = jest.fn().mockReturnValue(120);
-        wrapper.instance().getOffset = getOffset;
-
-        wrapper.setState({ translate: 0, allItemsWidth: 300, menuWidth: 200 });
-        const click = wrapper.instance().handleArrowClick(false);
-        expect(wrapper.instance().state.translate).toEqual(-100);
-
-        expect(onUpdate.mock.calls.length).toEqual(1);
-      });
       it('do not call onUpdate if translate same', () => {
         const wrapper = mount(
           <ScrollMenu
@@ -680,10 +661,27 @@ describe('functions', () => {
         wrapper.instance().getOffset = getOffset;
 
         wrapper.setState({ translate: 0, allItemsWidth: 300, menuWidth: 200 });
-        const click = wrapper.instance().handleArrowClick(false);
+        const click = wrapper.instance().handleArrowClick({ left: false });
         expect(wrapper.instance().state.translate).toEqual(0);
 
         expect(onUpdate.mock.calls.length).toEqual(0);
+      });
+      it('call onUpdate if translate changed', () => {
+        const wrapper = mount(
+          <ScrollMenu
+            {...props}
+          />
+        );
+        const onUpdate = jest.fn();
+        wrapper.instance().onUpdate = onUpdate;
+        const getOffset = jest.fn().mockReturnValue(120);
+        wrapper.instance().getOffset = getOffset;
+
+        wrapper.setState({ translate: 0, allItemsWidth: 300, menuWidth: 200 });
+        const click = wrapper.instance().handleArrowClick({ left: false });
+        expect(wrapper.instance().state.translate).toEqual(-100);
+
+        expect(onUpdate.mock.calls.length).toEqual(1);
       });
       it('do nothing width right noAlign, items width less than menu width', () => {
         const wrapper = mount(
@@ -697,8 +695,11 @@ describe('functions', () => {
 
         wrapper.setState({ translate: 0, allItemsWidth: 100, menuWidth: 200 });
         expect(wrapper.instance().state.translate).toEqual(0);
-        const click = wrapper.instance().handleArrowClick(false);
-        expect(click).toEqual(false);
+        const click = wrapper.instance().handleArrowClick({ left: false });
+
+        const { translate: newTranslate } = click;
+        expect(newTranslate).toBeFalsy();
+
         expect(wrapper.instance().state.translate).toEqual(0);
 
         expect(onUpdate.mock.calls.length).toEqual(0);
